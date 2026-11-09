@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>حسابداری فروشگاه</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f766e">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--tx:#1b1f24;--mut:#6b7280;--pri:#0f766e;--prt:#fff;--bd:#e2e5e9;--red:#b91c1c;--grn:#15803d;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--card:#1b2026;--tx:#e8eaed;--mut:#9aa3ad;--pri:#2dd4bf;--prt:#06201c;--bd:#2c333b;--red:#f87171;--grn:#4ade80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111418;--card:#1b2026;--tx:#e8eaed;--mut:#9aa3ad;--pri:#2dd4bf;--prt:#06201c;--bd:#2c333b;--red:#f87171;--grn:#4ade80;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:Vazirmatn,Tahoma,"Segoe UI",sans-serif;font-size:16px;padding-bottom:72px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;border:0;background:none;color:var(--mut);padding:12px 2px;font:inherit;font-size:14px}
+nav button.on{color:var(--pri);font-weight:bold}
+main{padding:12px;max-width:640px;margin:auto}
+h2{font-size:18px;margin:6px 0 10px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+input,select,textarea{width:100%;font:inherit;padding:10px;margin:4px 0;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+.btn{border:0;border-radius:8px;padding:10px 14px;font:inherit;background:var(--pri);color:var(--prt);cursor:pointer}
+.btn.s{background:var(--bg);color:var(--tx);border:1px solid var(--bd)}
+.btn.r{background:var(--red);color:#fff}
+.row{display:flex;gap:8px;align-items:center}.row>*{flex:1}.row>.f0{flex:0 0 auto}
+.sp{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mut{color:var(--mut);font-size:13px}.red{color:var(--red)}.grn{color:var(--grn)}
+.tot{font-size:20px;font-weight:bold}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.chips button{border:1px solid var(--bd);background:var(--bg);color:var(--tx);border-radius:16px;padding:6px 12px;font:inherit;font-size:14px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:9}
+.sh{background:var(--bg);width:100%;max-width:640px;max-height:88%;overflow:auto;border-radius:16px 16px 0 0;padding:14px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;border-bottom:1px solid var(--bd);text-align:right}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav id="nav"></nav>
+<script>
+let D={c:[],p:[],t:[]};
+try{D=JSON.parse(localStorage.getItem('acc3'))||D}catch(e){}
+const save=()=>{try{localStorage.setItem('acc3',JSON.stringify(D))}catch(e){}};
+const fa=n=>Number(n).toLocaleString('fa-IR');
+const num=v=>+String(v).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[,٬\s]/g,'')||0;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MN=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+const SN=['بهار','تابستان','پاییز','زمستان'];
+function jal(ts){const o={};new Intl.DateTimeFormat('en-u-ca-persian-nu-latn',{year:'numeric',month:'numeric',day:'numeric'}).formatToParts(new Date(ts)).forEach(p=>{if(p.type!='literal'&&p.type!='era')o[p.type]=+p.value});return o}
+const dt=ts=>{const j=jal(ts);return fa(j.year)+'/'+fa(j.month)+'/'+fa(j.day)};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const bal=id=>D.t.filter(t=>t.c==id).reduce((s,t)=>s+t.total-t.paid,0);
+const cname=id=>{const c=D.c.find(c=>c.id==id);return c?c.name:'مشتری نقدی'};
+let tab='sale',cart=[],cust='',paid='',rp='d',det=null;
+const tabs={sale:'فروش',cust:'مشتریان',prod:'کالاها',rep:'گزارش'};
+function render(){
+ $nav.innerHTML=Object.keys(tabs).map(k=>`<button class="${k==tab?'on':''}" onclick="tab='${k}';render()">${tabs[k]}</button>`).join('');
+ $app.innerHTML=({sale:vSale,cust:vCust,prod:vProd,rep:vRep})[tab]()+(det?vDet():'');
+}
+const $app=document.getElementById('app'),$nav=document.getElementById('nav');
+const money=n=>fa(n)+' ریال';
+function vSale(){
+ const total=cart.reduce((s,i)=>s+i.q*i.p,0);
+ return `<h2>ثبت فروش</h2><div class="card">
+ <select onchange="cust=this.value;render()"><option value="">مشتری نقدی (بدون حساب)</option>${D.c.map(c=>`<option value="${c.id}" ${c.id==cust?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+ <div class="mut">روی کالا بزنید تا به فاکتور اضافه شود:</div>
+ <div class="chips">${D.p.map(p=>`<button onclick="addI('${p.id}')">${esc(p.name)} · ${fa(p.price)}</button>`).join('')||'<span class="mut">ابتدا در بخش «کالاها» کالا اضافه کنید.</span>'}</div></div>
+ ${cart.map((i,x)=>`<div class="card"><div class="sp"><b>${esc(i.n)}</b><button class="btn s" onclick="cart.splice(${x},1);render()">حذف</button></div>
+ <div class="row"><div><span class="mut">تعداد</span><input type="number" inputmode="decimal" value="${i.q}" onchange="cart[${x}].q=num(this.value);render()"></div>
+ <div><span class="mut">قیمت واحد</span><input type="number" inputmode="numeric" value="${i.p}" onchange="cart[${x}].p=num(this.value);render()"></div></div>
+ <div class="mut">جمع: ${money(i.q*i.p)}</div></div>`).join('')}
+ <div class="card"><div class="sp"><span>جمع فاکتور</span><span class="tot">${money(total)}</span></div>
+ ${cust?`<span class="mut">مبلغ دریافتی همین الان (باقی‌مانده به بدهی مشتری اضافه می‌شود)</span><input id="pd" type="number" inputmode="numeric" value="${paid}" placeholder="۰" oninput="paid=this.value">`:''}
+ <button class="btn" style="width:100%;margin-top:8px" onclick="doSale()">ثبت فروش</button></div>`;
+}
+function addI(id){const p=D.p.find(p=>p.id==id),e=cart.find(i=>i.id==id);if(e)e.q++;else cart.push({id,n:p.name,q:1,p:p.price});render()}
+function doSale(){
+ if(!cart.length)return alert('کالایی انتخاب نشده است');
+ const total=cart.reduce((s,i)=>s+i.q*i.p,0);
+ const pd=cust?Math.min(num(paid),total):total;
+ D.t.push({id:uid(),t:Date.now(),c:cust,type:'sale',items:cart.map(i=>({n:i.n,q:i.q,p:i.p})),total,paid:pd});
+ save();cart=[];paid='';render();alert('فروش ثبت شد');
+}
+function vCust(){
+ return `<h2>مشتریان</h2><div class="card"><input id="cn" placeholder="نام مشتری"><input id="cp" inputmode="tel" placeholder="تلفن (اختیاری)"><button class="btn" onclick="addC()">افزودن مشتری</button></div>
+ ${D.c.map(c=>{const b=bal(c.id);return `<div class="card" onclick="det='${c.id}';render()"><div class="sp"><b>${esc(c.name)}</b><span class="${b>0?'red':b<0?'grn':'mut'}">${b>0?'بدهکار: ':b<0?'بستانکار: ':''}${money(Math.abs(b))}</span></div><div class="mut">${esc(c.phone||'')}</div></div>`}).join('')}
+ <div class="card sp"><span>مجموع طلب از مشتریان</span><b class="red">${money(D.c.reduce((s,c)=>s+Math.max(0,bal(c.id)),0))}</b></div>`;
+}
+function addC(){const n=document.getElementById('cn').value.trim();if(!n)return;D.c.push({id:uid(),name:n,phone:document.getElementById('cp').value.trim()});save();render()}
+function vDet(){
+ const c=D.c.find(c=>c.id==det);if(!c){det=null;return''}const b=bal(c.id);
+ const ts=D.t.filter(t=>t.c==c.id).sort((a,b)=>b.t-a.t);
+ return `<div class="ov" onclick="if(event.target==this){det=null;render()}"><div class="sh">
+ <div class="sp"><h2>${esc(c.name)}</h2><button class="btn s" onclick="det=null;render()">بستن</button></div>
+ <div class="card"><div class="sp"><span>مانده حساب</span><span class="tot ${b>0?'red':b<0?'grn':''}">${money(Math.abs(b))} ${b>0?'بدهکار':b<0?'بستانکار':''}</span></div>
+ <input id="pay" type="number" inputmode="numeric" placeholder="مبلغ دریافتی از مشتری">
+ <div class="row"><button class="btn" onclick="doPay()">ثبت دریافت</button>${b>0?`<button class="btn r" onclick="settle()">تسویه کامل (صفر کردن بدهی)</button>`:''}</div></div>
+ ${ts.map(t=>`<div class="card"><div class="sp"><b>${t.type=='sale'?'فروش':'دریافت وجه'}</b><span class="mut">${dt(t.t)}</span></div>
+ ${t.type=='sale'?`<div class="mut">${t.items.map(i=>esc(i.n)+' ×'+fa(i.q)).join('، ')}</div><div class="sp"><span>جمع: ${money(t.total)}</span><span>پرداختی: ${money(t.paid)}</span></div>`:`<div>${money(t.paid)}</div>`}</div>`).join('')}
+ <button class="btn s" style="width:100%" onclick="delC('${c.id}')">حذف مشتری (در صورت صفر بودن حساب)</button></div></div>`;
+}
+function doPay(){const a=num(document.getElementById('pay').value);if(a<=0)return;D.t.push({id:uid(),t:Date.now(),c:det,type:'pay',total:0,paid:a});save();render()}
+function settle(){const b=bal(det);if(b<=0)return;if(!confirm('بدهی '+money(b)+' صفر شود؟'))return;D.t.push({id:uid(),t:Date.now(),c:det,type:'pay',total:0,paid:b});save();render()}
+function delC(id){if(bal(id)!==0)return alert('ابتدا حساب مشتری را تسویه کنید');if(!confirm('مشتری حذف شود؟'))return;D.c=D.c.filter(c=>c.id!=id);det=null;save();render()}
+function vProd(){
+ return `<h2>کالاها و قیمت‌ها</h2><div class="card"><input id="pn" placeholder="نام کالا"><input id="pp" type="number" inputmode="numeric" placeholder="قیمت (ریال)"><button class="btn" onclick="addP()">افزودن کالا</button></div>
+ ${D.p.map(p=>`<div class="card sp"><div><b>${esc(p.name)}</b><div class="mut">${money(p.price)}</div></div><div class="row f0"><button class="btn s" onclick="editP('${p.id}')">قیمت</button><button class="btn s" onclick="delP('${p.id}')">حذف</button></div></div>`).join('')}`;
+}
+function addP(){const n=document.getElementById('pn').value.trim();if(!n)return;D.p.push({id:uid(),name:n,price:num(document.getElementById('pp').value)});save();render()}
+function editP(id){const p=D.p.find(p=>p.id==id),v=prompt('قیمت جدید برای '+p.name,p.price);if(v===null)return;p.price=num(v);save();render()}
+function delP(id){if(!confirm('کالا حذف شود؟'))return;D.p=D.p.filter(p=>p.id!=id);save();render()}
+function vRep(){
+ const g={};
+ D.t.forEach(t=>{const j=jal(t.t);let k,l;
+  if(rp=='d'){k=j.year*10000+j.month*100+j.day;l=dt(t.t)}
+  else if(rp=='m'){k=j.year*100+j.month;l=MN[j.month-1]+' '+fa(j.year)}
+  else{const s=Math.ceil(j.month/3);k=j.year*10+s;l=SN[s-1]+' '+fa(j.year)}
+  const r=g[k]||(g[k]={l,s:0,n:0,r:0});r.r+=t.paid;if(t.type=='sale'){r.s+=t.total;r.n++}});
+ const rows=Object.keys(g).sort((a,b)=>b-a).slice(0,60).map(k=>g[k]);
+ return `<h2>گزارش فروش</h2><div class="row" style="margin-bottom:8px">${[['d','روزانه'],['m','ماهانه'],['s','فصلی']].map(([k,l])=>`<button class="btn ${rp==k?'':'s'}" onclick="rp='${k}';render()">${l}</button>`).join('')}</div>
+ <div class="card"><table><tr><th>دوره</th><th>تعداد</th><th>فروش</th><th>دریافتی</th></tr>${rows.map(r=>`<tr><td>${r.l}</td><td>${fa(r.n)}</td><td>${fa(r.s)}</td><td>${fa(r.r)}</td></tr>`).join('')||'<tr><td colspan="4" class="mut">هنوز فروشی ثبت نشده</td></tr>'}</table><div class="mut">مبالغ به ریال</div></div>
+ <div class="card"><b>پشتیبان‌گیری</b><div class="mut">متن پشتیبان را کپی و جایی امن نگه دارید؛ برای بازیابی همان را اینجا بچسبانید.</div><textarea id="bk" rows="3"></textarea>
+ <div class="row"><button class="btn s" onclick="document.getElementById('bk').value=JSON.stringify(D)">تهیه پشتیبان</button><button class="btn s" onclick="restore()">بازیابی</button></div></div>`;
+}
+function restore(){try{const d=JSON.parse(document.getElementById('bk').value);if(!d.c||!d.p||!d.t)throw 0;if(!confirm('اطلاعات فعلی جایگزین شود؟'))return;D=d;save();render()}catch(e){alert('متن پشتیبان معتبر نیست')}}
+render();
+try{if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js")}catch(e){}
+</script>
+</body>
+</html>
